@@ -10,7 +10,7 @@ CONN = powerstore_conn.PowerStoreConn(
     username="<username>",
     password="<password>",
     server_ip="<IP>",
-    verify=False,
+    verify=True,
     application_type="<Application>",
 )
 print(CONN)

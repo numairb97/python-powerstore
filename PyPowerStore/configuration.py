@@ -364,7 +364,7 @@ class Configuration:
                 )
                 del modify_parameters["password"]
                 del modify_parameters["current_password"]
-                LOG.info("Modifying passwords: '%s'", payload)
+                LOG.info("Password modification completed for user: '%s'", local_user_id)
 
             for key, value in modify_parameters.items():
                 if value is not None:
@@ -1436,9 +1436,15 @@ class Configuration:
         :return: None
         :rtype: None
         """
+        valid_protocols = ["TLSv1_2", "TLSv1_3"]
+        if protocol_mode not in valid_protocols:
+            raise ValueError(f"Invalid protocol_mode. Must be one of: {valid_protocols}")
+
+        if protocol_mode == "TLSv1_2":
+            LOG.warning("Setting protocol_mode to TLSv1_2. Consider using TLSv1_3 for enhanced security.")
         LOG.info(
-            "Modify security config properties: '%s' with params '%s'",
-                security_config_id, protocol_mode
+            "Modifying security config properties: '%s' with protocol_mode '%s'",
+            security_config_id, protocol_mode
         )
 
         payload = {}

@@ -4,6 +4,7 @@
 
 # pylint: disable=duplicate-code
 
+import os
 from PyPowerStore import powerstore_conn
 
 REMOVE_INITIATORS = ["iqn.1998-01.com.vmware:lgloc187-4cfa37b6"]
@@ -33,10 +34,10 @@ MODIFY_INITIATORS = [
 REMOVE_INITIATORS = ["iqn.1998-01.com.vmware:lgloc187-4cfa37b6"]
 
 CONN = powerstore_conn.PowerStoreConn(
-    username="<username>",
-    password="<password>",
-    server_ip="<IP>",
-    verify=False,
+    username=os.getenv("POWERSTORE_USERNAME", "<username>"),
+    password=os.getenv("POWERSTORE_PASSWORD", "<password>"),
+    server_ip=os.getenv("POWERSTORE_SERVER_IP", "<IP>"),
+    verify=True,  # SECURITY: Always verify SSL certificates in production
     application_type="<Application>",
 )
 print(CONN)

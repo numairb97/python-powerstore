@@ -10,7 +10,7 @@ CONN = powerstore_conn.PowerStoreConn(
     username="<username>",
     password="<password>",
     server_ip="<server_ip>",
-    verify=False,
+    verify=True,  # SECURITY: Always verify SSL certificates in production
     timeout=180.0,
 )
 

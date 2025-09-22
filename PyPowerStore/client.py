@@ -7,6 +7,8 @@
 import base64
 import json
 import time
+import threading
+from cryptography.fernet import Fernet
 
 import requests
 from requests.exceptions import SSLError, Timeout, TooManyRedirects
@@ -51,8 +53,11 @@ class AuthenticationManager:
         self.application_type = application_type
         self.timeout = timeout
         self.host = host
-        self.dell_emc_token = None
-        self.cookie = None
+        self._session_lock = threading.Lock()
+        self._encryption_key = Fernet.generate_key()
+        self._cipher = Fernet(self._encryption_key)
+        self._encrypted_token = None
+        self._encrypted_cookie = None
         self.idle_timeout = 0
         self.creation_time = None
         self.headers = {
@@ -89,13 +94,14 @@ class AuthenticationManager:
 
     def is_session_alive(self):
         """Check if the session is alive or not"""
-        if (
-            self.creation_time
-            and self.idle_timeout
-            and ((time.time() - self.creation_time) < self.idle_timeout)
-        ):
-            return True
-        return False
+        with self._session_lock:
+            if (
+                self.creation_time
+                and self.idle_timeout
+                and ((time.time() - self.creation_time) < self.idle_timeout)
+            ):
+                return True
+            return False
 
     def login(self):
         """Login to powerstore and set the token and cookie"""
@@ -111,36 +117,58 @@ class AuthenticationManager:
             params=constants.LOGIN_SESSION_DETAILS_QUERY,
         )
         self.set_session_timeout_and_creation_time(response)
-        self.dell_emc_token = response.headers.get("DELL-EMC-TOKEN")
-        self.cookie = response.cookies.get("auth_cookie")
+        
+        with self._session_lock:
+            token = response.headers.get("DELL-EMC-TOKEN")
+            cookie = response.cookies.get("auth_cookie")
+            if token:
+                self._encrypted_token = self._cipher.encrypt(token.encode())
+            if cookie:
+                self._encrypted_cookie = self._cipher.encrypt(cookie.encode())
 
     def get_token_and_cookie(self):
         """Get the DELL-EMC-TOKEN and set-cookie"""
         auth_tokens = {}
-        if not self.dell_emc_token or not self.cookie or not self.is_session_alive():
-            self.login()
+        
+        with self._session_lock:
+            if not self._encrypted_token or not self._encrypted_cookie or not self.is_session_alive():
+                self.login()
 
-        auth_tokens.update({"DELL-EMC-TOKEN": self.dell_emc_token})
-        auth_tokens.update({"Cookie": f"auth_cookie={self.cookie}"})
+            if self._encrypted_token and self._encrypted_cookie:
+                token = self._cipher.decrypt(self._encrypted_token).decode()
+                cookie = self._cipher.decrypt(self._encrypted_cookie).decode()
+                auth_tokens.update({"DELL-EMC-TOKEN": token})
+                auth_tokens.update({"Cookie": f"auth_cookie={cookie}"})
+            
         return auth_tokens
 
     def logout_session(self):
         """Logout the current session"""
-        login_url = constants.LOGOUT_URL.format(self.host)
-        logout_headers = {}
-        logout_headers.update(self.headers)
-        logout_headers.update({"DELL-EMC-TOKEN": self.dell_emc_token})
-        logout_headers.update({"Cookie": f"auth_cookie={self.cookie}"})
-        requests.request(
-            constants.POST,
-            login_url,
-            headers=logout_headers,
-            verify=self.verify,
-            data=None,
-            timeout=self.timeout,
-        )
-        self.dell_emc_token = None
-        self.cookie = None
+        with self._session_lock:
+            if not self._encrypted_token or not self._encrypted_cookie:
+                return
+                
+            token = self._cipher.decrypt(self._encrypted_token).decode()
+            cookie = self._cipher.decrypt(self._encrypted_cookie).decode()
+            
+            login_url = constants.LOGOUT_URL.format(self.host)
+            logout_headers = {}
+            logout_headers.update(self.headers)
+            logout_headers.update({"DELL-EMC-TOKEN": token})
+            logout_headers.update({"Cookie": f"auth_cookie={cookie}"})
+            requests.request(
+                constants.POST,
+                login_url,
+                headers=logout_headers,
+                verify=self.verify,
+                data=None,
+                timeout=self.timeout,
+            )
+            
+            self._encrypted_token = None
+            self._encrypted_cookie = None
+            self.creation_time = None
+            self.idle_timeout = 0
 
 
 class Client:
@@ -274,64 +302,40 @@ class Client:
         :type response: requests.models.Response
         """
         if response.status_code == 500:
-            error_msg = "PowerStore internal server error. Error details: " + str(
-                response.json(),
-            )
+            error_msg = "PowerStore internal server error."
         elif response.status_code == 401:
             error_msg = "Access forbidden: Authentication required."
         elif response.status_code == 403:
-            error_msg = "Not allowed - authorization failure. Error details: " + str(
-                response.json(),
-            )
+            error_msg = "Not allowed - authorization failure."
         elif response.status_code == 404:
-            error_msg = "Requested resource not found. Error details: " + str(
-                response.json(),
-            )
+            error_msg = "Requested resource not found."
         elif response.status_code == 405:
-            error_msg = (
-                "The HTTP method is not supported on that URL. "
-                "Error details: " + str(response.json())
-            )
+            error_msg = "The HTTP method is not supported on that URL."
         elif response.status_code == 406:
             error_msg = (
                 "Not acceptable - the server cannot satisfy the "
                 "Accept: header in the request. Either the format "
-                "or version requested is not supported. "
-                "Error details: " + str(response.json())
+                "or version requested is not supported."
             )
         elif response.status_code == 415:
-            error_msg = "Invalid request Content-Type. Error details: " + str(
-                response.json(),
-            )
+            error_msg = "Invalid request Content-Type."
         elif response.status_code == 416:
             error_msg = (
                 "Range Not Satisfiable. The client requested a "
-                "starting offset (using the ?offset URL parameter, "
-                "or the first value in Range header) that was "
-                "larger than the number of instances in the queried "
-                "result set. Error details: " + str(response.json())
+                "starting offset that was larger than the number "
+                "of instances in the queried result set."
             )
         elif response.status_code == 422:
-            error_msg = "Request could not be completed. Error details: " + str(
-                response.json(),
-            )
+            error_msg = "Request could not be completed."
         elif response.status_code == 503:
-            error_msg = (
-                "The service is temporarily unavailable. "
-                "Error details: " + str(response.json())
-            )
+            error_msg = "The service is temporarily unavailable."
         else:
-            error_msg = str(response.json())
-        LOG.error(error_msg)
+            error_msg = "An error occurred while processing the request."
+        
+        LOG.error("HTTP %d: %s", response.status_code, error_msg)
         raise PowerStoreException(
             PowerStoreException.HTTP_ERR,
-            "HTTP code: "
-            + str(response.status_code)
-            + ", "
-            + response.reason
-            + " ["
-            + error_msg
-            + "]",
+            f"HTTP code: {response.status_code}, {response.reason} [{error_msg}]",
             str(response.status_code),
         )
 

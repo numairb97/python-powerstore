@@ -101,25 +101,25 @@ class Provisioning:
         :param appliance_id: (optional) The appliance ID
         """
         name = validate_string_input(name, "name", max_length=128, pattern=r'^[a-zA-Z0-9\-_\.]+$')
-        
+
         if not isinstance(size, int) or size <= 0:
             raise ValueError("size must be a positive integer")
-        
+
         if description is not None:
             description = validate_string_input(description, "description", max_length=512, allow_empty=True)
-        
+
         if volume_group_id is not None:
             volume_group_id = validate_id_parameter(volume_group_id, "volume_group_id")
-        
+
         if protection_policy_id is not None:
             protection_policy_id = validate_id_parameter(protection_policy_id, "protection_policy_id")
-        
+
         if performance_policy_id is not None:
             performance_policy_id = validate_id_parameter(performance_policy_id, "performance_policy_id")
-        
+
         if appliance_id is not None:
             appliance_id = validate_id_parameter(appliance_id, "appliance_id")
-        
+
         if app_type is not None and not helpers.is_malka_or_higher():
             raise ValueError(
                 "'app_type' parameter is supported only from "
@@ -738,7 +738,7 @@ class Provisioning:
         :rtype: list of dict
         """
         LOG.info(
-            "Getting volumes with filter: '%s' and all_pages: %s", 
+            "Getting volumes with filter: '%s' and all_pages: %s",
                 filter_dict, all_pages
         )
         querystring = helpers.prepare_querystring(
@@ -887,7 +887,7 @@ class Provisioning:
         :rtype: list of dict
         """
         LOG.info(
-            "Getting hosts with filter: '%s' and all_pages: %s", 
+            "Getting hosts with filter: '%s' and all_pages: %s",
                 filter_dict, all_pages
         )
         querystring = helpers.prepare_querystring(
@@ -1131,7 +1131,7 @@ class Provisioning:
         :rtype: list of dict
         """
         LOG.info(
-            "Getting hostgroup with filter: '%s' and all_pages: %s", 
+            "Getting hostgroup with filter: '%s' and all_pages: %s",
                 filter_dict, all_pages
         )
         querystring = helpers.prepare_querystring(
@@ -1383,7 +1383,7 @@ class Provisioning:
         :rtype: list of dict
         """
         LOG.info(
-            "Getting volumegroups with filter: '%s' and all_pages: %s", 
+            "Getting volumegroups with filter: '%s' and all_pages: %s",
                 filter_dict, all_pages
         )
         querystring = helpers.prepare_querystring(
@@ -1774,7 +1774,7 @@ class Provisioning:
         :rtype: list of dict
         """
         LOG.info(
-            "Getting nodes with filter: '%s' and all_pages: %s", 
+            "Getting nodes with filter: '%s' and all_pages: %s",
                 filter_dict, all_pages
         )
         querystring = helpers.prepare_querystring(
@@ -1836,7 +1836,7 @@ class Provisioning:
         :rtype: list of dict
         """
         LOG.info(
-            "Getting nasservers with filter: '%s' and all_pages: %s", 
+            "Getting nasservers with filter: '%s' and all_pages: %s",
                 filter_dict, all_pages
         )
         querystring = helpers.prepare_querystring(

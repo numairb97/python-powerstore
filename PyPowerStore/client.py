@@ -117,7 +117,7 @@ class AuthenticationManager:
             params=constants.LOGIN_SESSION_DETAILS_QUERY,
         )
         self.set_session_timeout_and_creation_time(response)
-        
+
         with self._session_lock:
             token = response.headers.get("DELL-EMC-TOKEN")
             cookie = response.cookies.get("auth_cookie")
@@ -129,7 +129,7 @@ class AuthenticationManager:
     def get_token_and_cookie(self):
         """Get the DELL-EMC-TOKEN and set-cookie"""
         auth_tokens = {}
-        
+
         with self._session_lock:
             if not self._encrypted_token or not self._encrypted_cookie or not self.is_session_alive():
                 self.login()
@@ -139,7 +139,7 @@ class AuthenticationManager:
                 cookie = self._cipher.decrypt(self._encrypted_cookie).decode()
                 auth_tokens.update({"DELL-EMC-TOKEN": token})
                 auth_tokens.update({"Cookie": f"auth_cookie={cookie}"})
-            
+
         return auth_tokens
 
     def logout_session(self):
@@ -147,10 +147,10 @@ class AuthenticationManager:
         with self._session_lock:
             if not self._encrypted_token or not self._encrypted_cookie:
                 return
-                
+
             token = self._cipher.decrypt(self._encrypted_token).decode()
             cookie = self._cipher.decrypt(self._encrypted_cookie).decode()
-            
+
             login_url = constants.LOGOUT_URL.format(self.host)
             logout_headers = {}
             logout_headers.update(self.headers)
@@ -164,7 +164,7 @@ class AuthenticationManager:
                 data=None,
                 timeout=self.timeout,
             )
-            
+
             self._encrypted_token = None
             self._encrypted_cookie = None
             self.creation_time = None
@@ -331,7 +331,7 @@ class Client:
             error_msg = "The service is temporarily unavailable."
         else:
             error_msg = "An error occurred while processing the request."
-        
+
         LOG.error("HTTP %d: %s", response.status_code, error_msg)
         raise PowerStoreException(
             PowerStoreException.HTTP_ERR,

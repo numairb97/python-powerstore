@@ -1439,10 +1439,9 @@ class Configuration:
         valid_protocols = ["TLSv1_2", "TLSv1_3"]
         if protocol_mode not in valid_protocols:
             raise ValueError(f"Invalid protocol_mode. Must be one of: {valid_protocols}")
-        
+
         if protocol_mode == "TLSv1_2":
             LOG.warning("Setting protocol_mode to TLSv1_2. Consider using TLSv1_3 for enhanced security.")
-        
         LOG.info(
             "Modifying security config properties: '%s' with protocol_mode '%s'",
             security_config_id, protocol_mode
